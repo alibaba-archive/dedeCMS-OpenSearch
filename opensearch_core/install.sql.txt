@@ -1,0 +1,50 @@
+DROP TABLE IF EXISTS `opensearch_for_dedecms`;
+CREATE TABLE IF NOT EXISTS `opensearch_for_dedecms` ( 
+`id` int(4) NOT NULL auto_increment, 
+`options` varchar(256) CHARACTER SET utf8 NOT NULL,
+PRIMARY KEY (`id`) 
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
+
+
+#如果你的dedecms数据库中的表有类似"dede_"的前缀，请为INSERT INTO `plus` 的plus添加相应前缀，如"dede_plus"
+
+INSERT INTO `plus` (`plusname`, `menustring`, `mainurl`, `writer`, `isshow`, `filelist`) VALUES 
+('开放搜索', '<m:item name=''开放搜索'' link=''/../opensearch_core/views/options.php'' rank=''plus_开放搜索'' target=''main'' />', '', 'Aliopoensearch', 1, ''); 
+
+1. /dede/config.php
+require_once(dirname(__FILE__).'/../opensearch_core/config.php');
+
+1. /dede/article_add.php  /dede/article_edit.php
+doIndex(get_defined_vars());
+
+1. /dede/archives_do.php 
+DelArc($aid);之后
+removeIndex($aid);
+
+1. /include/arc.searchview.class.php
+在文件头部添加
+require_once(dirname(__FILE__)."/../opensearch_core/config.php");
+
+将if ($cfg_sphinx_article == 'Y')修改为
+  $options = new \OpensearchOptionValues();
+
+        if ($options->isValid) {
+            $opensearch = new \OpenserachService($options);
+
+                if($this->SearchType == 'title'){
+                    $options->index = "title";
+                }
+
+            $searchResult = $opensearch->search($this->Keywords,$limitstart,(int)$row);
+
+            foreach ($searchResult['result']['items'] as $item) {
+                $aids[] = intval($item['id']);
+            }
+
+            $aids = @implode(',', $aids);
+            $query = "SELECT arc.*,act.typedir,act.typename,act.isdefault,act.defaultname,act.namerule,
+            act.namerule2,act.ispart,act.moresite,act.siteurl,act.sitepath
+            FROM `#@__archives` arc LEFT JOIN `#@__arctype` act ON arc.typeid=act.id
+            WHERE arc.id IN ($aids)";
+        }
+        else if ($cfg_sphinx_article == 'Y')
